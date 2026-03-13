@@ -1,21 +1,18 @@
 import { StatusBar, StyleSheet, useColorScheme, View, AppState, Text } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
-// import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 
 import React, { useEffect, useState } from 'react';
 import LoadingScreen from './src/components/LoadingScreen';
 import OnBoardScreen from './src/components/OnBoardScreen';
-import HomeScreen from './src/components/HomeScreen';
+import HomeNavigator from './src/navigation/HomeNavigator';
 import { COLORS, FONTS } from './src/constants';
 import ReactContextManager from './src/utils/ReactContextManager';
 import NetworkLoadingModal from './src/components/NetworkLoadingModal';
 import useNetworkConnection from './src/hooks/useNetworkConnection';
 
 function App() {
-  const [loading, setLoading] = useState(true);
-  const [showOnBoard, setShowOnBoard] = useState(false);
-  const [showPermissions, setShowPermissions] = useState(false);
-  const [appReady, setAppReady] = useState(false);
+  const [scene, setScene] = useState('loading'); // 'loading' | 'onboard' | 'home'
   const [showGlobalNetworkModal, setShowGlobalNetworkModal] = useState(false);
 
   const isDarkMode = useColorScheme() === 'light';
@@ -28,102 +25,34 @@ function App() {
     Text.defaultProps = Text.defaultProps || {};
     Text.defaultProps.style = { fontFamily: FONTS.PRIMARY };
     
-    // Simplified initialization using ReactContextManager
     console.log('🚀 App initialization started...');
-    
-    ReactContextManager.onReady( async () => {
-      console.log('✅ App: React context ready, checking security...');
-      setAppReady(true);
-            
-      // Check if authentication is required
-      checkAuthenticationRequired();
-    });
 
-    // Cleanup on unmount
     return () => {
       ReactContextManager.cleanup();
-      // IAPManager.cleanup();
     };
   }, []);
 
   // Network state management
   useEffect(() => {
-    // Block loading screen if no network connection
     if (!isConnected && !isChecking) {
-      // console.log('🌐 App: No network detected - blocking app access');
-      
-      // // Show network modal for other scenes (except network-required)
-      // if (currentScene !== 'network-required') {
-        setShowGlobalNetworkModal(true);
-    //   }
-    // } else if (isConnected && (showGlobalNetworkModal || currentScene === 'network-required')) {
-    //   console.log('🎉 App: Network restored - allowing app access');
-    //   setShowGlobalNetworkModal(false);
-      
-    //   // When network is restored from network-required screen, proceed to loading
-    //   if (currentScene === 'network-required') {
-    //     console.log('🔄 App: Network restored - proceeding to loading screen');
-    //     setCurrentScene('loading');
-    //   }
+      setShowGlobalNetworkModal(true);
     }
-  }, [isConnected, isChecking, showGlobalNetworkModal]);
+  }, [isConnected, isChecking]);
 
-  const startNormalFlow = () => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-      setShowOnBoard(true);
-    }, 1000);
-    
-    return () => clearTimeout(timer);
+  const handleLoadingComplete = () => {
+    console.log('✅ Loading complete, navigating to OnBoarding...');
+    setScene('onboard');
   };
 
   const handleOnBoardNext = () => {
-    console.log('🔄 OnBoard completed, navigating to Permissions...');
-    setShowOnBoard(false);
-    setShowPermissions(true);
-  };
-
-  const handlePermissionsNext = () => {
-    console.log('🔄 Permissions completed, navigating to Main App...');
-    setShowPermissions(false);
-  };
-
-  const handlePermissionsSkip = () => {
-    console.log('⏭️ Permissions skipped, navigating to Main App...');
-    setShowPermissions(false);
+    console.log('🔄 OnBoard completed, navigating to Home...');
+    setScene('home');
   };
 
   const handleGlobalNetworkRestored = () => {
     console.log('🎉 App: Global network connection restored');
     setShowGlobalNetworkModal(false);
   };
-
-  // Note: Mobile Ads initialization is handled by AdManager
-  useEffect(() => {
-    // const initializeMobileAds = async () => {
-    //   try {
-    //     // Try different ways to initialize
-    //     if (GoogleMobileAds && typeof GoogleMobileAds.initialize === 'function') {
-    //       await GoogleMobileAds.initialize();
-    //       console.log('✅ Mobile Ads initialized via GoogleMobileAds.initialize');
-    //     } else if (GoogleMobileAds && typeof GoogleMobileAds === 'function') {
-    //       const adsInstance = GoogleMobileAds();
-    //       if (adsInstance && typeof adsInstance.initialize === 'function') {
-    //         await adsInstance.initialize();
-    //         console.log('✅ Mobile Ads initialized via GoogleMobileAds().initialize');
-    //       } else {
-    //         console.log('⚠️ Mobile Ads initialize method not available, but components should work');
-    //       }
-    //     } else {
-    //       console.log('⚠️ GoogleMobileAds not available as expected');
-    //     }
-    //   } catch (error) {
-    //     console.log('⚠️ Mobile Ads initialization error (non-critical):', error);
-    //   }
-    // };
-    
-    // initializeMobileAds();
-  }, []);
 
 
   return (
@@ -133,16 +62,14 @@ function App() {
         barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
         backgroundColor={COLORS.BACKGROUND}
       />
-      {!appReady ? (
-        <View style={styles.container}>
-          <LoadingScreen />
-        </View>
-      ) : loading ? (
-        <LoadingScreen />
-      ) : showOnBoard ? (
+      {scene === 'loading' ? (
+        <LoadingScreen onComplete={handleLoadingComplete} />
+      ) : scene === 'onboard' ? (
         <OnBoardScreen onNext={handleOnBoardNext} />
       ) : (
-        <HomeScreen />
+        <NavigationContainer>
+          <HomeNavigator />
+        </NavigationContainer>
       )}
       
       {/* Global Network Loading Modal - Don't show on network-required scene */}

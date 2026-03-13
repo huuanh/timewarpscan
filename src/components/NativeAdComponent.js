@@ -335,9 +335,7 @@ const styles = StyleSheet.create({
         textAlign: 'left',
     },
     nativeAdCTA: {
-        backgroundColor: COLORS.TERTIARY,
-        // paddingVertical: 12,
-        // paddingHorizontal: 20,
+        backgroundColor: COLORS.SECONDARY,
         borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',

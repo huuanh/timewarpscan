@@ -7,59 +7,79 @@ import {
     Image,
     Platform,
     PermissionsAndroid,
+    FlatList,
+    Dimensions,
 } from 'react-native';
-import { COLORS, FONTS } from '../constants';
 import useTranslation from '../hooks/useTranslation';
 import IAPModal from './IAPModal';
-import AdManager, { ADS_UNIT } from '../AdManager';
 import messaging from '@react-native-firebase/messaging';
+import DEFAULT_HOME_VIDEOS from '../config/HomeVideosConfig';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
-const HomeScreen = () => {
+const { width } = Dimensions.get('window');
+const THUMB_WIDTH = (width - 52) / 3;
+const THUMB_HEIGHT = THUMB_WIDTH * 1.4;
+
+const VideoThumbnailItem = ({ item, onPress }) => (
+    <TouchableOpacity style={thumbStyles.container} onPress={onPress} activeOpacity={0.8}>
+        <Image source={{ uri: item.thumbnail }} style={thumbStyles.image} />
+        <View style={thumbStyles.playOverlay}>
+            <Icon name="play-circle-outline" size={32} color="#fff" />
+        </View>
+    </TouchableOpacity>
+);
+
+const thumbStyles = StyleSheet.create({
+    container: {
+        width: THUMB_WIDTH,
+        height: THUMB_HEIGHT,
+        borderRadius: 10,
+        overflow: 'hidden',
+        marginRight: 8,
+    },
+    image: {
+        width: '100%',
+        height: '100%',
+    },
+    playOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.2)',
+    },
+});
+
+const HomeScreen = ({ navigation }) => {
     const { t } = useTranslation();
-    const [activeTab, setActiveTab] = useState('record');
+    const [activeTab, setActiveTab] = useState('home');
     const [showIAPModal, setShowIAPModal] = useState(false);
+    const [videosConfig, setVideosConfig] = useState(DEFAULT_HOME_VIDEOS);
 
-    const renderTabContent = () => {
-        return <View style={{ flex: 1 }} />;
+    const handleShowIAP = () => setShowIAPModal(true);
+
+    const handleVideoPress = (videoUrl, title) => {
+        navigation.navigate('VideoPlayer', { videoUrl, title });
     };
-
-    const handleShowIAP = () => {
-        setShowIAPModal(true);
-    };
-
-    handleTabPress = (tab) => {
-        AdManager.showInterstitialAd(ADS_UNIT.INTERSTITIAL_SWITCH_TAB);
-        setActiveTab(tab);
-    }
 
     async function requestPermission() {
         try {
-            // Android 13+ cần POST_NOTIFICATIONS
             if (Platform.OS === 'android' && Platform.Version >= 33) {
                 const granted = await PermissionsAndroid.request(
                     PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
                 );
                 if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-                    console.log('Notification permission denied (Android 13+)');
                     return false;
                 }
             }
-
-            // Firebase (iOS + Android)
             const authStatus = await messaging().requestPermission();
             const enabled =
                 authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
                 authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
             if (enabled) {
                 const token = await messaging().getToken();
-                console.log("FCM token:", token);
-                console.log('Notification permission granted');
-                return true;
-            } else {
-                console.log('Notification permission denied');
-                return false;
+                console.log('FCM token:', token);
             }
+            return enabled;
         } catch (error) {
             console.error('Permission error:', error);
             return false;
@@ -67,34 +87,105 @@ const HomeScreen = () => {
     }
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            requestPermission();
-        }, 500);
-
+        const timer = setTimeout(() => requestPermission(), 500);
         return () => clearTimeout(timer);
     }, []);
+
+    const renderCategory = ({ item: category }) => (
+        <View style={styles.categorySection}>
+            <View style={styles.categoryHeader}>
+                <Text style={styles.categoryTitle}>
+                    {category.title} {category.emoji}
+                </Text>
+                <TouchableOpacity>
+                    <Text style={styles.viewAll}>View All {'>'}</Text>
+                </TouchableOpacity>
+            </View>
+            <FlatList
+                data={category.videos}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(v) => v.id}
+                renderItem={({ item }) => (
+                    <VideoThumbnailItem
+                        item={item}
+                        onPress={() => handleVideoPress(item.videoUrl, item.title ?? category.title)}
+                    />
+                )}
+                contentContainerStyle={styles.videoRow}
+            />
+        </View>
+    );
+
+    const renderHomeTab = () => (
+        <FlatList
+            data={videosConfig.categories}
+            renderItem={renderCategory}
+            keyExtractor={(cat) => cat.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.homeContent}
+        />
+    );
+
+    const renderCollectionTab = () => (
+        <View style={styles.emptyTab}>
+            <Icon name="collections" size={48} color="#555" />
+            <Text style={styles.emptyTabText}>{t('collectionEmpty', 'Your collection is empty')}</Text>
+        </View>
+    );
 
     return (
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>
-                    <Text style={styles.headerTitlePrimary}>Background Video </Text>
-                    <Text style={styles.headerTitleSecondary}>Recorder</Text>
-                </Text>
-                <TouchableOpacity style={styles.premiumIcon} onPress={handleShowIAP}>
-                    <Image style={styles.premiumIconText} source={require('../../assets/setting/diamond.png')} />
+                <TouchableOpacity style={styles.headerIconBtn}>
+                    <Image source={require('../../assets/home/setting.png')} style={styles.headerIcon} />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Time Warp Scan</Text>
+                <TouchableOpacity style={styles.headerIconBtn} onPress={handleShowIAP}>
+                    <Image source={require('../../assets/home/vip.png')} style={styles.headerIcon} />
                 </TouchableOpacity>
             </View>
 
             {/* Tab Content */}
-            {renderTabContent()}
+            <View style={styles.content}>
+                {activeTab === 'home' ? renderHomeTab() : renderCollectionTab()}
+            </View>
 
-            {/* IAP Modal */}
-            <IAPModal
-                visible={showIAPModal}
-                onClose={() => setShowIAPModal(false)}
-            />
+            {/* Bottom Tab Bar */}
+            <View style={styles.bottomBar}>
+                <TouchableOpacity
+                    style={styles.bottomTab}
+                    onPress={() => setActiveTab('home')}
+                >
+                    <Image
+                        source={require('../../assets/home/home.png')}
+                        style={[styles.bottomTabIcon, activeTab === 'home' && styles.bottomTabIconActive]}
+                    />
+                    <Text style={[styles.bottomTabText, activeTab === 'home' && styles.bottomTabTextActive]}>
+                        Home
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.cameraBtn}>
+                    <Image source={require('../../assets/home/camera.png')} style={styles.cameraBtnIcon} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.bottomTab}
+                    onPress={() => setActiveTab('collection')}
+                >
+                    <Image
+                        source={require('../../assets/home/collection.png')}
+                        style={[styles.bottomTabIcon, activeTab === 'collection' && styles.bottomTabIconActive]}
+                    />
+                    <Text style={[styles.bottomTabText, activeTab === 'collection' && styles.bottomTabTextActive]}>
+                        Collection
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+            <IAPModal visible={showIAPModal} onClose={() => setShowIAPModal(false)} />
         </View>
     );
 };
@@ -102,86 +193,116 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.BACKGROUND,
+        backgroundColor: '#111',
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 5,
-        paddingBottom: 20,
-        backgroundColor: COLORS.BACKGROUND,
-        // borderBottomWidth: 1,
-        // borderBottomColor: '#E5E7EB',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        fontFamily: FONTS.PRIMARY,
+        color: '#fff',
     },
-    headerTitlePrimary: {
-        color: COLORS.TERTIARY,
-    },
-    headerTitleSecondary: {
-        color: COLORS.SECONDARY,
-    },
-    premiumIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        // backgroundColor: '#F3F4F6',
+    headerIconBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        // backgroundColor: '#222',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    premiumIconText: {
-        // fontSize: 16,
-        width: 20,
-        height: 20,
+    headerIcon: {
+        width: 30,
+        height: 30,
         resizeMode: 'contain',
     },
-    bottomTabs: {
-        flexDirection: 'row',
-        backgroundColor: COLORS.BACKGROUND,
-        // borderTopWidth: 1,
-        // borderTopColor: '#E5E7EB',
-        // paddingTop: 10,
-        // paddingBottom: 20,
-        paddingHorizontal: 10,
+    content: {
+        flex: 1,
     },
-    tab: {
+    homeContent: {
+        paddingBottom: 16,
+    },
+    categorySection: {
+        marginTop: 16,
+        paddingHorizontal: 16,
+    },
+    categoryHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    categoryTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#fff',
+    },
+    viewAll: {
+        fontSize: 13,
+        color: '#aaa',
+    },
+    videoRow: {
+        paddingRight: 8,
+    },
+    emptyTab: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    emptyTabText: {
+        color: '#777',
+        marginTop: 12,
+        fontSize: 15,
+    },
+    bottomBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        paddingVertical: 6,
+        paddingBottom: 12,
+        backgroundColor: '#111',
+        borderTopWidth: 1,
+        borderTopColor: '#222',
+    },
+    bottomTab: {
         flex: 1,
         alignItems: 'center',
-        paddingVertical: 5,
+        paddingVertical: 4,
     },
-    activeTab: {
-        backgroundColor: 'transparent',
+    bottomTabIcon: {
+        width: 24,
+        height: 24,
+        resizeMode: 'contain',
+        tintColor: '#666',
+        marginBottom: 2,
     },
-    tabIcon: {
-        width: 32,
-        height: 32,
+    bottomTabIconActive: {
+        tintColor: '#fff',
+    },
+    bottomTabText: {
+        fontSize: 11,
+        color: '#666',
+    },
+    bottomTabTextActive: {
+        color: '#fff',
+        fontWeight: '600',
+    },
+    cameraBtn: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 4,
+        marginTop: -20,
     },
-    tabIconText: {
-        fontSize: 20,
-        fontFamily: FONTS.PRIMARY,
-    },
-    tabIconImage: {
-        width: 20,
-        height: 20,
+    cameraBtnIcon: {
+        width: 56,
+        height: 56,
         resizeMode: 'contain',
-    },
-    tabText: {
-        fontSize: 11,
-        color: '#9CA3AF',
-        fontWeight: '500',
-        fontFamily: FONTS.PRIMARY,
-    },
-    activeTabText: {
-        color: '#1E3A8A',
-        fontWeight: '600',
     },
 });
 

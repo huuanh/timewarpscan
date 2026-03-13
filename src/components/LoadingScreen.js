@@ -8,7 +8,7 @@ import VIPManager from '../utils/VIPManager';
 import NetworkManager from '../utils/NetworkManager';
 import useTranslation from '../hooks/useTranslation';
 
-const LoadingScreen = () => {
+const LoadingScreen = ({ onComplete }) => {
     const { t } = useTranslation();
   // State for loading text and progress
   const [loadingText, setLoadingText] = useState(t('loading', 'Loading...'));
@@ -147,9 +147,16 @@ const LoadingScreen = () => {
     }).start();
   }, [progress, progressAnim]);
 
-  // Add smooth progress animation
+  // Notify parent when all services are loaded
   useEffect(() => {
-    // Start with initial progress
+    if (adManagerLoaded && iapManagerLoaded && vipManagerLoaded && onComplete) {
+      const timer = setTimeout(() => onComplete(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [adManagerLoaded, iapManagerLoaded, vipManagerLoaded, onComplete]);
+
+  // Start with initial progress
+  useEffect(() => {
     const initialProgress = setInterval(() => {
       setProgress(prev => {
         if (prev < 15) {

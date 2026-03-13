@@ -1,46 +1,67 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Dimensions,
+} from 'react-native';
 import { COLORS } from '../constants';
 import AdManager, { ADS_UNIT } from '../AdManager.js';
 import { NativeAdComponent } from './NativeAdComponent';
 import useTranslation from '../hooks/useTranslation';
 import ChangeLanguageModal from './ChangeLanguageModal';
-import { SUPPORTED_LANGUAGES } from '../utils/LanguageManager';
+
+const { width } = Dimensions.get('window');
+
+const SLIDES = [
+  {
+    key: '1',
+    image: require('../../assets/onboard/1.png'),
+    title: 'Trend the Moment',
+    subtitle: 'Create viral effects in one scan.',
+  },
+  {
+    key: '2',
+    image: require('../../assets/onboard/2.png'),
+    title: 'Warp Your Face',
+    subtitle: 'Freeze lines. Shape your look.',
+  },
+  {
+    key: '3',
+    image: require('../../assets/onboard/3.png'),
+    title: 'Share the Fun',
+    subtitle: 'Save fast. Impress instantly.',
+  },
+];
 
 const OnBoardScreen = ({ onNext }) => {
-  const { t, languageManager, currentLanguage } = useTranslation();
+  const { t, languageManager } = useTranslation();
+  const [activeIndex, setActiveIndex] = useState(0);
   const [adShown, setAdShown] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const flatListRef = useRef(null);
 
   useEffect(() => {
-    // Check if first time user and show language modal
     const checkFirstTimeUser = async () => {
       try {
         const isFirstTime = await languageManager.isFirstTimeUser();
-        console.log('🌍 First time user check:', isFirstTime);
-        
         if (isFirstTime) {
-          // Show language modal for first time users
-          setTimeout(() => {
-            setShowLanguageModal(true);
-          }, 1000); // Delay 1s để user thấy UI trước
+          setTimeout(() => setShowLanguageModal(true), 1000);
         }
       } catch (error) {
         console.log('Error checking first time user:', error);
       }
     };
 
-    // Show App Open Ad when component mounts
     const showAd = async () => {
       if (!adShown) {
-        console.log('🚀 OnBoardScreen: Attempting to show App Open Ad...');
         try {
-          // Fix: Use adManagerInstance instead of AdManager
-          const result = await AdManager.showAppOpenAd();
-          // console.log('✅ App Open Ad result:', result);
+          await AdManager.showAppOpenAd();
           setAdShown(true);
         } catch (error) {
-          console.log('❌ App Open Ad failed:', error.message);
           setAdShown(true);
         }
       }
@@ -51,17 +72,74 @@ const OnBoardScreen = ({ onNext }) => {
     return () => clearTimeout(timer);
   }, [adShown, languageManager]);
 
+  const onViewableItemsChanged = useCallback(({ viewableItems }) => {
+    if (viewableItems.length > 0) {
+      setActiveIndex(viewableItems[0].index ?? 0);
+    }
+  }, []);
+
+  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
+
+  const handleNext = () => {
+    if (activeIndex < SLIDES.length - 1) {
+      flatListRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
+    } else {
+      onNext();
+    }
+  };
+
+  const isLastSlide = activeIndex === SLIDES.length - 1;
+
+  const renderSlide = ({ item }) => (
+    <View style={styles.slide}>
+      <View style={styles.imageContainer}>
+        <Image source={item.image} style={styles.slideImage} resizeMode="cover" />
+      </View>
+      <Text style={styles.slideTitle}>{item.title}</Text>
+      <Text style={styles.slideSubtitle}>{item.subtitle}</Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <View style={styles.botGroup}>
-        <Text style={styles.slideTitle}>{t('recordVideoEverywhere', 'Record video everywhere')}</Text>
-        <NativeAdComponent adUnitId={ADS_UNIT.NATIVE_ONBOARDING} hasMedia={true} />
-        <TouchableOpacity onPress={onNext} style={styles.nextBtn}>
-          <Text style={styles.nextText}>{t('next', 'Next')}</Text>
+      {/* Slides */}
+      <View style={styles.slidesWrapper}>
+        <FlatList
+          ref={flatListRef}
+          data={SLIDES}
+          renderItem={renderSlide}
+          keyExtractor={(item) => item.key}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          bounces={false}
+        />
+      </View>
+
+      {/* Pagination + Next */}
+      <View style={styles.paginationRow}>
+        <View style={styles.dots}>
+          {SLIDES.map((_, i) => (
+            <View
+              key={i}
+              style={[styles.dot, i === activeIndex && styles.dotActive]}
+            />
+          ))}
+        </View>
+        <TouchableOpacity onPress={handleNext} style={styles.nextBtn}>
+          <Text style={styles.nextText}>
+            {isLastSlide ? t('getStarted', 'Get Started') : t('next', 'Next')}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Language Selector Modal */}
+      {/* Native Ad */}
+      <View style={styles.adContainer}>
+        <NativeAdComponent adUnitId={ADS_UNIT.NATIVE_ONBOARDING} hasMedia={false} />
+      </View>
+
       <ChangeLanguageModal
         visible={showLanguageModal}
         onClose={() => setShowLanguageModal(false)}
@@ -73,109 +151,76 @@ const OnBoardScreen = ({ onNext }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#111',
+  },
+  slidesWrapper: {
+    flex: 1,
+  },
+  slide: {
+    width,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    // padding: 16,
+    paddingHorizontal: 20,
   },
-  languageButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    zIndex: 10,
+  imageContainer: {
+    width: width - 40,
+    aspectRatio: 4 / 3,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
   },
-  flagIcon: {
-    width: 20,
-    height: 15,
-    borderRadius: 2,
-    marginRight: 8,
-  },
-  languageButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.TERTIARY,
-    marginRight: 4,
-  },
-  languageArrow: {
-    fontSize: 10,
-    color: COLORS.TERTIARY,
-    opacity: 0.7,
-  },
-  testButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    backgroundColor: 'rgba(255, 0, 0, 0.8)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 15,
-    elevation: 3,
-    zIndex: 10,
-  },
-  testButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  bgImage: {
-    position: 'absolute',
+  slideImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
-  },
-
-  slideImage: {
-    position: 'absolute',
-    width: 190,
-    height: 190,
-    top: 100,
-    resizeMode: 'contain',
-  },
-
-  botGroup: {
-    position: 'absolute',
-    bottom: 5,
-    width: '100%',
-    paddingHorizontal: 10,
   },
   slideTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: COLORS.TERTIARY,
-    marginBottom: 10,
+    color: '#fff',
     textAlign: 'center',
   },
-  nextBtn: {
-    backgroundColor: COLORS.TERTIARY,
-    borderRadius: 8,
-    paddingVertical: 12,
+  slideSubtitle: {
+    fontSize: 14,
+    color: '#aaa',
+    textAlign: 'center',
+    marginTop: 6,
+  },
+  paginationRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    width: '100%',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  dots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#555',
+    marginRight: 6,
+  },
+  dotActive: {
+    backgroundColor: '#D4A94B',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  nextBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
   nextText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: '#D4A94B',
+    fontWeight: '600',
     fontSize: 16,
   },
-  adBox: {
-    backgroundColor: COLORS.SECONDARY,
-    // borderRadius: 16,
-    padding: 0, // Remove padding as NativeAdComponent handles it
-    width: '100%',
-    minHeight: 200,
-    overflow: 'hidden',
+  adContainer: {
+    paddingHorizontal: 10,
+    paddingBottom: 10,
   },
 });
 
