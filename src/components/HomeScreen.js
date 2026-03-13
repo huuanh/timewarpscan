@@ -167,7 +167,7 @@ const HomeScreen = ({ navigation }) => {
                     </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.cameraBtn}>
+                <TouchableOpacity style={styles.cameraBtn} onPress={() => navigation.navigate('Camera')}>
                     <Image source={require('../../assets/home/camera.png')} style={styles.cameraBtnIcon} />
                 </TouchableOpacity>
 

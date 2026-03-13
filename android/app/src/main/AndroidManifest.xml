@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- System alert window for overlay -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- For foreground service -->
@@ -54,133 +56,6 @@
         </intent-filter>
       </activity-alias>
 
-      <!-- Browser Icons -->
-      <activity-alias
-        android:name=".MainActivityBr1"
-        android:targetActivity="com.timewarpscan.MainActivity"
-        android:enabled="false"
-        android:exported="true"
-        android:icon="@mipmap/ic_launcher_br1"
-        android:label="Browser">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-      </activity-alias>
-
-      <activity-alias
-        android:name=".MainActivityBr2"
-        android:targetActivity="com.timewarpscan.MainActivity"
-        android:enabled="false"
-        android:exported="true"
-        android:icon="@mipmap/ic_launcher_br2"
-        android:label="Browser">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-      </activity-alias>
-
-      <activity-alias
-        android:name=".MainActivityBr3"
-        android:targetActivity="com.timewarpscan.MainActivity"
-        android:enabled="false"
-        android:exported="true"
-        android:icon="@mipmap/ic_launcher_br3"
-        android:label="Browser">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-      </activity-alias>
-
-      <!-- Computer Icons -->
-      <activity-alias
-        android:name=".MainActivityCac1"
-        android:targetActivity="com.timewarpscan.MainActivity"
-        android:enabled="false"
-        android:exported="true"
-        android:icon="@mipmap/ic_launcher_cac1"
-        android:label="Calculator">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-      </activity-alias>
-
-      <activity-alias
-        android:name=".MainActivityCac2"
-        android:targetActivity="com.timewarpscan.MainActivity"
-        android:enabled="false"
-        android:exported="true"
-        android:icon="@mipmap/ic_launcher_cac2"
-        android:label="Calculator">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-      </activity-alias>
-
-      <activity-alias
-        android:name=".MainActivityCac3"
-        android:targetActivity="com.timewarpscan.MainActivity"
-        android:enabled="false"
-        android:exported="true"
-        android:icon="@mipmap/ic_launcher_cac3"
-        android:label="Calculator">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-      </activity-alias>
-
-      <!-- Weather Icons -->
-      <activity-alias
-        android:name=".MainActivityWe1"
-        android:targetActivity="com.timewarpscan.MainActivity"
-        android:enabled="false"
-        android:exported="true"
-        android:icon="@mipmap/ic_launcher_we1"
-        android:label="Weather">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-      </activity-alias>
-
-      <activity-alias
-        android:name=".MainActivityWe2"
-        android:targetActivity="com.timewarpscan.MainActivity"
-        android:enabled="false"
-        android:exported="true"
-        android:icon="@mipmap/ic_launcher_we2"
-        android:label="Weather">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-      </activity-alias>
-
-      <activity-alias
-        android:name=".MainActivityWe3"
-        android:targetActivity="com.timewarpscan.MainActivity"
-        android:enabled="false"
-        android:exported="true"
-        android:icon="@mipmap/ic_launcher_we3"
-        android:label="Weather">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-      </activity-alias>
-      
-      <!-- Background Video Recording Service -->
-      <service
-        android:name="com.timewarpscan.VideoRecordingService"
-        android:enabled="true"
-        android:exported="false"
-        android:foregroundServiceType="camera|microphone" />
-        
       <!-- FileProvider for sharing files -->
       <provider
         android:name="androidx.core.content.FileProvider"
