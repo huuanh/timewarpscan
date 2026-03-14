@@ -172,7 +172,7 @@ const LoadingScreen = ({ onComplete }) => {
 
   return (
     <View style={styles.loadingContainer}>
-      <Text style={styles.title}>{t('appTitle', 'Background Video Recorder')}</Text>
+      <Text style={styles.title}>{t('appTitle', 'Time Warp Scan')}</Text>
       <View style={styles.progressBarContainer}>
         <Animated.View 
           style={[

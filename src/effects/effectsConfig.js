@@ -1,4 +1,4 @@
-// Effect definitions — each maps to a Skia RuntimeShader SkSL source
+// Effect definitions — each has a shader source for Skia processing
 import normalShader from './shaders/normal';
 import swirlShader from './shaders/swirl';
 import gridShader from './shaders/grid';

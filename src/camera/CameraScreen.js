@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -6,10 +6,10 @@ import {
     TouchableOpacity,
     StatusBar,
     Alert,
+    useWindowDimensions,
 } from 'react-native';
-import { Camera, useCameraDevice, useSkiaFrameProcessor } from 'react-native-vision-camera';
-import { Skia } from '@shopify/react-native-skia';
-import { useSharedValue } from 'react-native-worklets-core';
+import { Camera, useCameraDevice } from 'react-native-vision-camera';
+import { Canvas, Fill, Shader, ImageShader, Skia } from '@shopify/react-native-skia';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import useCameraPermission from '../hooks/useCameraPermission';
 import CameraControls from './CameraControls';
@@ -17,92 +17,77 @@ import EffectSelector from '../components/EffectSelector';
 import EFFECTS from '../effects/effectsConfig';
 import { savePhoto, saveVideo } from '../utils/mediaSaver';
 
-// Pre-compile all RuntimeEffects at module level for perf
-const COMPILED_EFFECTS = {};
-EFFECTS.forEach((e) => {
-    try {
-        COMPILED_EFFECTS[e.id] = Skia.RuntimeEffect.Make(e.shader);
-    } catch (err) {
-        console.warn(`Shader compile error for ${e.id}:`, err);
-    }
-});
-
 const CameraScreen = ({ navigation }) => {
     const cameraRef = useRef(null);
     const { hasAllPermissions, requestPermissions } = useCameraPermission();
+    const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
     const [cameraPosition, setCameraPosition] = useState('front');
     const [mode, setMode] = useState('photo');
     const [isRecording, setIsRecording] = useState(false);
     const [selectedEffect, setSelectedEffect] = useState('normal');
     const [showEffects, setShowEffects] = useState(false);
+    const [frameImage, setFrameImage] = useState(null);
 
     const device = useCameraDevice(cameraPosition);
+    const timeRef = useRef(0);
 
-    // Shared values for worklet access
-    const effectId = useSharedValue('normal');
-    const timeValue = useSharedValue(0);
+    // Compile current effect shader (null for 'normal')
+    const runtimeEffect = useMemo(() => {
+        if (selectedEffect === 'normal') return null;
+        const effect = EFFECTS.find((e) => e.id === selectedEffect);
+        if (!effect?.shader) return null;
+        return Skia.RuntimeEffect.Make(effect.shader);
+    }, [selectedEffect]);
 
-    // Sync React state → shared value
+    // Whether this effect needs a time uniform
+    const needsTime = useMemo(() => {
+        const effect = EFFECTS.find((e) => e.id === selectedEffect);
+        return effect?.shader?.includes('uniform float time') ?? false;
+    }, [selectedEffect]);
+
+    // Snapshot capture loop — runs when a shader effect is active
     useEffect(() => {
-        effectId.value = selectedEffect;
-    }, [selectedEffect, effectId]);
+        if (!runtimeEffect) {
+            setFrameImage(null);
+            timeRef.current = 0;
+            return;
+        }
 
-    // Time animation for effects that use `time` uniform
-    useEffect(() => {
-        const hasTimeUniform = EFFECTS.find(
-            (e) => e.id === selectedEffect,
-        )?.shader?.includes('uniform float time');
-        if (!hasTimeUniform) return;
+        let active = true;
 
-        let frame;
-        const start = Date.now();
-        const tick = () => {
-            timeValue.value = (Date.now() - start) / 1000;
-            frame = requestAnimationFrame(tick);
+        const captureLoop = async () => {
+            while (active) {
+                if (cameraRef.current) {
+                    try {
+                        const snapshot = await cameraRef.current.takeSnapshot({
+                            quality: 40,
+                        });
+                        if (!active) break;
+
+                        const data = await Skia.Data.fromURI(
+                            `file://${snapshot.path}`,
+                        );
+                        if (!active) break;
+
+                        const img = Skia.Image.MakeImageFromEncoded(data);
+                        if (img && active) {
+                            timeRef.current += 0.05;
+                            setFrameImage(img);
+                        }
+                    } catch (_) {
+                        // Skip frame on error (camera busy, etc.)
+                    }
+                }
+                await new Promise((r) => setTimeout(r, 40));
+            }
         };
-        frame = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(frame);
-    }, [selectedEffect, timeValue]);
 
-    // Skia Frame Processor
-    const frameProcessor = useSkiaFrameProcessor(
-        (frame) => {
-            'worklet';
-            const eid = effectId.value;
-
-            if (eid === 'normal' || !COMPILED_EFFECTS[eid]) {
-                // No effect — just render the frame
-                frame.render();
-                return;
-            }
-
-            const rt = COMPILED_EFFECTS[eid];
-            const paint = Skia.Paint();
-
-            // Build uniforms
-            const uniforms = [frame.width, frame.height]; // resolution
-            const effect = EFFECTS.find((e) => e.id === eid);
-            if (effect?.shader?.includes('uniform float time')) {
-                uniforms.push(timeValue.value);
-            }
-
-            // Shader with camera image as child
-            const imageShader = frame.__skImage.makeShaderOptions(
-                0, // TileMode.Clamp
-                0, // TileMode.Clamp
-                0, // FilterMode.Nearest
-                0, // MipmapMode.None
-            );
-            const shader = rt.makeShaderWithChildren(uniforms, [imageShader]);
-            paint.setShader(shader);
-
-            // Draw a full-screen rect with the shader
-            const rect = Skia.XYWHRect(0, 0, frame.width, frame.height);
-            frame.drawRect(rect, paint);
-        },
-        [effectId, timeValue],
-    );
+        captureLoop();
+        return () => {
+            active = false;
+        };
+    }, [runtimeEffect]);
 
     // Request permissions on mount
     useEffect(() => {
@@ -199,7 +184,7 @@ const CameraScreen = ({ navigation }) => {
         <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#000" translucent />
 
-            {/* Camera Preview with Skia Frame Processor */}
+            {/* Native camera preview (always visible) */}
             <Camera
                 ref={cameraRef}
                 style={StyleSheet.absoluteFill}
@@ -208,8 +193,33 @@ const CameraScreen = ({ navigation }) => {
                 photo={true}
                 video={true}
                 audio={true}
-                frameProcessor={frameProcessor}
             />
+
+            {/* Skia shader overlay — covers camera when effect is active */}
+            {runtimeEffect && frameImage && (
+                <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                    <Canvas style={{ width: screenWidth, height: screenHeight }}>
+                        <Fill>
+                            <Shader
+                                source={runtimeEffect}
+                                uniforms={{
+                                    resolution: [screenWidth, screenHeight],
+                                    ...(needsTime ? { time: timeRef.current } : {}),
+                                }}
+                            >
+                                <ImageShader
+                                    image={frameImage}
+                                    fit="cover"
+                                    width={screenWidth}
+                                    height={screenHeight}
+                                    tx="clamp"
+                                    ty="clamp"
+                                />
+                            </Shader>
+                        </Fill>
+                    </Canvas>
+                </View>
+            )}
 
             {/* Top bar */}
             <View style={styles.topBar}>

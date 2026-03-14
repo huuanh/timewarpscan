@@ -36,52 +36,6 @@ export const TRANSLATIONS = {
     'restart_message': 'Vui lòng khởi động lại ứng dụng để áp dụng ngôn ngữ mới.',
     'language_error': 'Không thể thay đổi ngôn ngữ. Vui lòng thử lại.',
     
-    // Recording
-    'record': 'Ghi hình',
-    'stop_recording': 'Dừng ghi hình',
-    'start_recording': 'Bắt đầu ghi hình',
-    'recording_failed': 'Ghi hình thất bại',
-    'unable_to_start_recording': 'Không thể bắt đầu ghi hình. Vui lòng thử lại.',
-    'recording_stopped': 'Đã dừng ghi hình',
-    'permission_required': 'Cần cấp quyền',
-    'camera_permission': 'Vui lòng vào Cài đặt > Ứng dụng > TimeWarpScan > Quyền và bật quyền Camera và Microphone, rồi thử ghi hình lại.',
-    'overlay_permission': 'Vui lòng vào Cài đặt và bật quyền "Hiển thị trên các ứng dụng khác", rồi thử ghi hình lại.',
-    'cannot_change_settings': 'Không thể thay đổi cài đặt',
-    'stop_recording_first': 'Dừng ghi hình trước để thay đổi cài đặt.',
-    'initialization_error': 'Lỗi khởi tạo',
-    'app_starting_up': 'Ứng dụng đang khởi động. Vui lòng đợi một chút và thử lại.',
-    'permission_error': 'Lỗi quyền',
-    'grant_permissions': 'Vui lòng cấp quyền Camera và Microphone để ghi video có âm thanh.',
-    
-    // Gallery
-    'videos': 'Video',
-    'audios': 'Âm thanh',
-    'no_videos_yet': 'Chưa có video nào',
-    'no_audio_files_yet': 'Chưa có file âm thanh nào',
-    'time': 'Thời gian',
-    'ratio': 'Tỷ lệ',
-    'size': 'Kích thước',
-    'duration': 'Thời lượng',
-    'loading_videos': 'Đang tải video...',
-    'no_videos_found': 'Không tìm thấy video',
-    'video_deleted_successfully': 'Xóa video thành công',
-    'audio_deleted_successfully': 'Xóa âm thanh thành công',
-    'failed_to_delete_video': 'Không thể xóa video',
-    'failed_to_delete_audio': 'Không thể xóa âm thanh',
-    'video_file_not_found': 'Không tìm thấy file video',
-    'audio_file_not_found': 'Không tìm thấy file âm thanh',
-    'file_might_be_deleted': 'File có thể đã bị xóa.',
-    'video_recording_module_not_available': 'Module ghi video không khả dụng',
-    'no_app_available': 'Không có ứng dụng',
-    'no_app_found_to_handle': 'Không tìm thấy ứng dụng để xử lý loại chia sẻ này. Vui lòng cài đặt ứng dụng cần thiết.',
-    'share_error': 'Lỗi chia sẻ',
-    'failed_to_share_video': 'Không thể chia sẻ video',
-    'failed_to_share_audio': 'Không thể chia sẻ âm thanh',
-    'file_renamed_successfully': 'Đổi tên file thành công',
-    'video_renamed_to': 'Video đã được đổi tên thành',
-    'audio_renamed_to': 'Âm thanh đã được đổi tên thành',
-    'failed_to_rename_file': 'Không thể đổi tên file',
-    
     // Settings
     'settings': 'Cài đặt',
     'camera_mode': 'Chế độ camera',
@@ -111,70 +65,6 @@ export const TRANSLATIONS = {
     'error_updating_biometric': 'Có lỗi khi cập nhật cài đặt sinh trắc học',
     'failed_to_save_auto_split': 'Không thể lưu cài đặt tự động tách',
     
-    // Resolution
-    'sd_quality': 'Chất lượng SD',
-    'hd_quality': 'Chất lượng HD',
-    'full_hd_quality': 'Chất lượng Full HD',
-    'standard_definition': 'Định nghĩa tiêu chuẩn',
-    'high_definition_default': 'Độ nét cao (Mặc định)',
-    'full_high_definition_pro': 'Độ nét cao toàn phần (PRO)',
-    
-    // Duration
-    'minutes': 'phút',
-    'unlimited': 'Không giới hạn',
-    'duration_required_pro': 'Cần nâng cấp PRO để sử dụng thời lượng này',
-    'upgrade_to_pro': 'Nâng cấp lên PRO',
-    
-    // Preview Size
-    'choose_preview_size': 'Chọn kích thước preview',
-    'small': 'Nhỏ',
-    'medium': 'Trung bình',
-    'large': 'Lớn',
-    
-    // Password
-    'set_app_password': 'Đặt mật khẩu ứng dụng',
-    'new_password': 'Mật khẩu mới',
-    'confirm_password': 'Xác nhận mật khẩu',
-    'passwords_do_not_match': 'Mật khẩu không khớp',
-    'password_too_short': 'Mật khẩu quá ngắn (tối thiểu 4 ký tự)',
-    'password_set_successfully': 'Đặt mật khẩu thành công!',
-    
-    // Rename
-    'rename': 'Đổi tên',
-    'enter_valid_name': 'Vui lòng nhập tên hợp lệ',
-    
-    // Video Actions
-    'delete': 'Xóa',
-    'share': 'Chia sẻ',
-    'confirm_delete': 'Xác nhận xóa',
-    'are_you_sure_delete_video': 'Bạn có chắc chắn muốn xóa video này?',
-    'are_you_sure_delete_audio': 'Bạn có chắc chắn muốn xóa file âm thanh này?',
-    
-    // Video Player
-    'video_error': 'Lỗi video',
-    'failed_to_load_video': 'Không thể tải video',
-    'video_format_not_supported': 'Định dạng video không được hỗ trợ',
-    
-    // Edit Options
-    'trim': 'Cắt',
-    'merge': 'Ghép',
-    'compress': 'Nén',
-    'convert_to_audio': 'Chuyển thành âm thanh',
-    
-    // Trim Video
-    'invalid_selection': 'Lựa chọn không hợp lệ',
-    'select_at_least_1_second': 'Vui lòng chọn ít nhất 1 giây video để cắt.',
-    'export_failed': 'Xuất thất bại',
-    'failed_to_trim_video': 'Không thể cắt video. Vui lòng thử lại.',
-    'no_video_file_to_share': 'Không có file video để chia sẻ',
-    
-    // Convert to Audio
-    'video_to_audio': 'Video sang âm thanh',
-    'convert_to_audio_btn': 'Chuyển thành âm thanh',
-    'converting_to_audio': 'Đang chuyển thành âm thanh',
-    'audio_exported': 'Âm thanh của bạn đã được xuất',
-    'conversion_complete': 'Hoàn thành chuyển đổi',
-    
     // Network
     'no_internet_connection': 'Không có kết nối Internet',
     'connection_tips': 'Mẹo kết nối:',
@@ -196,44 +86,11 @@ export const TRANSLATIONS = {
     'month': 'Tháng',
     'subscription_terms': 'Bạn có thể hủy đăng ký trên Google Play Store bất cứ lúc nào.\nSau thời gian dùng thử miễn phí, đăng ký sẽ được tính phí định kỳ theo giá hiển thị ở trên.',
     
-    // Permissions Screen
-    'permissions': 'Quyền',
-    'grant_permissions_desc': 'Vui lòng cấp các quyền sau để sử dụng ứng dụng:',
-    
-    // Change Icon
-    'customize_app_icon': 'Tùy chỉnh biểu tượng ứng dụng',
-    'change_icon_failed': 'Không thể đổi biểu tượng ứng dụng',
-    'icon_change_confirmation': 'Thay đổi biểu tượng',
-    'icon_change_restart_warning': 'Ứng dụng sẽ khởi động lại để áp dụng biểu tượng mới. Bạn có muốn tiếp tục?',
-    'failed_to_change_icon': 'Không thể đổi biểu tượng',
-    
     // Icon Categories
     'browser_icons': 'Trình duyệt',
     'computer_icons': 'Máy tính',
     'weather_icons': 'Thời tiết',
 
-    // Recording Limit Modal
-    'free_limit_3min': 'Bạn đang sử dụng phiên bản miễn phí, chỉ cho phép ghi màn hình tối đa 3 phút. Vui lòng nâng cấp lên phiên bản Premium để ghi màn hình không giới hạn thời gian!',
-    'upgrade_for_unlimited': 'Nâng cấp lên Premium để ghi hình không giới hạn, chất lượng cao hơn và nhiều tính năng khác!',
-    'unlimited_recording': 'Ghi hình không giới hạn',
-    'no_ads': 'Không quảng cáo',
-    'upgrade_premium': 'Nâng cấp Premium',
-    'continue_limited': 'Tiếp tục với giới hạn',
-
-    // Authentication Modal
-    'appLocked': 'Ứng dụng bị khóa',
-    'enterPassword': 'Nhập mật khẩu của bạn',
-    'unlockWithPassword': 'Mở khóa bằng mật khẩu',
-    'useBiometrics': 'Sử dụng sinh trắc học',
-    'failedAttempts': '{count} lần thử thất bại{plural}',
-    'exitApp': 'Thoát ứng dụng',
-
-    // Duration Modal
-    'recordingDuration': 'Thời lượng ghi hình',
-    'premiumMember': '👑 Thành viên Premium',
-    'freeUser': '👤 Người dùng miễn phí',
-    'upgradeToPremiumNote': '💡 Nâng cấp lên Premium để mở khóa ghi hình không giới hạn và loại bỏ quảng cáo!',
-    
     // IAP Modal
     'bestOption': 'Lựa chọn tốt nhất',
     'regularPrice': 'Giá thường',
@@ -254,31 +111,6 @@ export const TRANSLATIONS = {
     'enjoyPremiumPackage': 'Trải nghiệm gói Premium với tính năng độc quyền.',
     'failed_to_save_auto_split': 'Không thể lưu cài đặt tự động tách',
 
-    // Trim Video Modal
-    'trim_exit_confirmation': 'Bạn có chắc chắn muốn thoát khỏi việc cắt video?',
-    'invalid_selection': 'Lựa chọn không hợp lệ',
-    'select_at_least_1_second': 'Vui lòng chọn ít nhất 1 giây video để cắt.',
-    'export_failed': 'Xuất thất bại',
-    'failed_to_trim_video': 'Không thể cắt video. Vui lòng thử lại.',
-
-    // Compress Modal
-    'compressVideo': 'Nén video',
-    'compressing': 'Đang nén...',
-    'export': 'Xuất',
-    'compressingVideo': 'Đang nén video',
-    'pleaseWait': 'Vui lòng chờ...',
-    'videoExported': 'Video của bạn đã được xuất',
-    'backToHome': 'Về trang chủ',
-    'shareVideo': 'Chia sẻ video',
-
-    // Mp3 Convert Modal
-    'convertingToAudio': 'Đang chuyển thành âm thanh',
-    'audioExported': 'Âm thanh của bạn đã được xuất',
-    'conversionComplete': 'Hoàn thành chuyển đổi',
-
-    // Multi Video Selector Modal
-    'selectionRequired': 'Cần chọn',
-
     // Network Loading Modal
     'noInternetConnection': 'Không có kết nối Internet',
     'connectionTips': 'Mẹo kết nối:',
@@ -287,47 +119,13 @@ export const TRANSLATIONS = {
     'restartWifiRouter': '• Khởi động lại router WiFi',
     
     // App
-    'appTitle': 'Máy ghi video nền',
+    'appTitle': 'Time Warp Scan',
     'adsDisclaimer': 'Hành động này có thể chứa quảng cáo',
-    
-    // Duration Modal
-    'recordingDuration': 'Thời lượng ghi hình',
-    'premiumMember': '👑 Thành viên Premium',
-    'freeUser': '👤 Người dùng miễn phí',
-    'upgradeToPremiumNote': '💡 Nâng cấp lên Premium để mở khóa ghi hình không giới hạn và loại bỏ quảng cáo!',
     
     // Settings Tab
     'becomeVipMember': 'TRỞ THÀNH THÀNH VIÊN VIP',
     'enjoyPremiumPackage': 'Trải nghiệm gói Premium với tính năng độc quyền.',
     'upgrade': 'Nâng cấp',
-    
-    // Resolution Modal
-    'videoQuality': 'Chất lượng video',
-    
-    // Home Screen
-    'gallery': 'Thư viện',
-    'edit': 'Chỉnh sửa',
-    
-    // Authentication Modal
-    'appLocked': 'Ứng dụng bị khóa',
-    'enterPassword': 'Nhập mật khẩu của bạn',
-    'unlockWithPassword': 'Mở khóa bằng mật khẩu',
-    'useBiometrics': 'Sử dụng sinh trắc học',
-    'failedAttempts': '{count} lần thử thất bại{plural}',
-    'exitApp': 'Thoát ứng dụng',
-    
-    // Video Processing
-    'compressVideo': 'Nén video',
-    'compressing': 'Đang nén...',
-    'export': 'Xuất',
-    'compressingVideo': 'Đang nén video',
-    'pleaseWait': 'Vui lòng chờ...',
-    'videoExported': 'Video của bạn đã được xuất',
-    'backToHome': 'Về trang chủ',
-    'shareVideo': 'Chia sẻ video',
-    
-    // Recording
-    'rec': 'GHI',
     
     // Camera Mode
     'cameraModeSelection': 'Chọn chế độ camera',
@@ -336,23 +134,7 @@ export const TRANSLATIONS = {
     'rename': 'Đổi tên',
     
     // Onboarding
-    'recordVideoEverywhere': 'Ghi video mọi nơi',
     'next': 'Tiếp theo',
-    
-    // Recording Settings
-    'preview': 'Xem trước',
-    'quality': 'Chất lượng',
-    'camera': 'Camera',
-    'unlimited': 'Không giới hạn',
-    'mins': 'phút',
-    'on': 'Bật',
-    'off': 'Tắt',
-    
-    // Gallery Tab
-    'allVideos': 'Tất cả video',
-    'appVideos': 'Video ứng dụng',
-    'startRecordingPrompt': 'Bắt đầu ghi hình để xem video ở đây',
-    'convertVideosPrompt': 'Chuyển đổi video thành âm thanh để xem chúng ở đây'
   },
   
   'en': {
@@ -643,7 +425,7 @@ export const TRANSLATIONS = {
     'restartWifiRouter': '• Restart your WiFi router',
     
     // App
-    'appTitle': 'Background Video Recorder',
+    'appTitle': 'Time Warp Scan',
     'adsDisclaimer': 'This action may contain ads',
     
     // Resolution Modal
@@ -972,7 +754,7 @@ export const TRANSLATIONS = {
     'computer_icons': '컴퓨터',
     'weather_icons': '날씨',
     'convert_exit_confirmation': '변환을 종료하시겠습니까?',
-    'appTitle': '백그라운드 비디오 레코더',
+    'appTitle': 'Time Warp Scan',
     'adsDisclaimer': '이 작업에는 광고가 포함될 수 있습니다',
     'videoQuality': '비디오 품질',
     'cameraModeSelection': '카메라 모드 선택',
@@ -1237,7 +1019,7 @@ export const TRANSLATIONS = {
     'computer_icons': 'コンピュータ',
     'weather_icons': '天気',
     'convert_exit_confirmation': '変換を終了してもよろしいですか？',
-    'appTitle': 'バックグラウンドビデオレコーダー',
+    'appTitle': 'Time Warp Scan',
     'adsDisclaimer': 'このアクションには広告が含まれる場合があります',
     'videoQuality': 'ビデオ品質',
     'cameraModeSelection': 'カメラモードを選択',
@@ -1703,7 +1485,7 @@ export const TRANSLATIONS = {
     'computer_icons': 'Computadora',
     'weather_icons': 'Clima',
     'convert_exit_confirmation': '¿Estás seguro de que quieres salir de la conversión?',
-    'appTitle': 'Grabador de Video en Segundo Plano',
+    'appTitle': 'Time Warp Scan',
     'adsDisclaimer': 'Esta acción puede contener anuncios',
     'videoQuality': 'Calidad de video',
     'cameraModeSelection': 'Selección de modo de cámara',
@@ -2169,7 +1951,7 @@ export const TRANSLATIONS = {
     'computer_icons': 'Computador',
     'weather_icons': 'Clima',
     'convert_exit_confirmation': 'Tem certeza de que deseja sair da conversão?',
-    'appTitle': 'Gravador de Vídeo em Segundo Plano',
+    'appTitle': 'Time Warp Scan',
     'adsDisclaimer': 'Esta ação pode conter anúncios',
     'videoQuality': 'Qualidade do vídeo',
     'cameraModeSelection': 'Seleção do modo da câmera',
@@ -2635,7 +2417,7 @@ export const TRANSLATIONS = {
     'computer_icons': 'Ordinateur',
     'weather_icons': 'Météo',
     'convert_exit_confirmation': 'Êtes-vous sûr de vouloir quitter la conversion?',
-    'appTitle': 'Enregistreur Vidéo en Arrière-Plan',
+    'appTitle': 'Time Warp Scan',
     'adsDisclaimer': 'Cette action peut contenir des publicités',
     'videoQuality': 'Qualité vidéo',
     'cameraModeSelection': 'Sélection du mode caméra',
@@ -3101,7 +2883,7 @@ export const TRANSLATIONS = {
     'computer_icons': 'Computer',
     'weather_icons': 'Wetter',
     'convert_exit_confirmation': 'Sind Sie sicher, dass Sie die Konvertierung verlassen möchten?',
-    'appTitle': 'Hintergrund-Videorecorder',
+    'appTitle': 'Time Warp Scan',
     'adsDisclaimer': 'Diese Aktion kann Werbung enthalten',
     'videoQuality': 'Video-Qualität',
     'cameraModeSelection': 'Kamera-Modus-Auswahl',
@@ -3567,7 +3349,7 @@ export const TRANSLATIONS = {
     'computer_icons': 'कंप्यूटर',
     'weather_icons': 'मौसम',
     'convert_exit_confirmation': 'क्या आप वाकई रूपांतरण से बाहर निकलना चाहते हैं?',
-    'appTitle': 'बैकग्राउंड वीडियो रिकॉर्डर',
+    'appTitle': 'Time Warp Scan',
     'adsDisclaimer': 'इस क्रिया में विज्ञापन हो सकते हैं',
     'videoQuality': 'वीडियो गुणवत्ता',
     'cameraModeSelection': 'कैमरा मोड चयन',
@@ -4033,7 +3815,7 @@ export const TRANSLATIONS = {
     'computer_icons': 'الكمبيوتر',
     'weather_icons': 'الطقس',
     'convert_exit_confirmation': 'هل أنت متأكد من الخروج من التحويل؟',
-    'appTitle': 'مسجل الفيديو في الخلفية',
+    'appTitle': 'Time Warp Scan',
     'adsDisclaimer': 'قد يحتوي هذا الإجراء على إعلانات',
     'videoQuality': 'جودة الفيديو',
     'cameraModeSelection': 'اختيار وضع الكاميرا',
