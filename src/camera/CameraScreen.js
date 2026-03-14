@@ -10,15 +10,16 @@ import {
     NativeModules,
 } from 'react-native';
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
-import { Canvas, Fill, Shader, ImageShader, Skia } from '@shopify/react-native-skia';
+import { Canvas, Fill, Shader, ImageShader, Skia, Image as SkiaImage, Group, Line as SkiaLine } from '@shopify/react-native-skia';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import useCameraPermission from '../hooks/useCameraPermission';
 import CameraControls from './CameraControls';
 import EffectSelector from '../components/EffectSelector';
 import EFFECTS from '../effects/effectsConfig';
 import { savePhoto, saveVideo } from '../utils/mediaSaver';
+import CAMERA_CONFIG from './cameraConfig';
 
-const { FileWriter, VideoEncoder } = NativeModules;
+const { FileWriter, VideoEncoder, FrameGrabber } = NativeModules;
 
 /**
  * Apply a Skia shader effect to an SkImage on an offscreen surface.
@@ -69,6 +70,12 @@ const CameraScreen = ({ navigation }) => {
     const timeRef = useRef(0);
     const isEffectRecordingRef = useRef(false);
 
+    // Waterfall scan state
+    const [isWaterfallCapturing, setIsWaterfallCapturing] = useState(false);
+    const [scanProgress, setScanProgress] = useState(0); // 0.0 → 1.0
+    const [waterfallComposite, setWaterfallComposite] = useState(null);
+    const waterfallCaptureRef = useRef(false); // true while scan is running
+
     // Compile current effect shader (null for 'normal')
     const runtimeEffect = useMemo(() => {
         if (selectedEffect === 'normal') return null;
@@ -95,6 +102,11 @@ const CameraScreen = ({ navigation }) => {
 
         const captureLoop = async () => {
             while (active) {
+                // Pause while waterfall scan manages its own snapshots
+                if (waterfallCaptureRef.current) {
+                    await new Promise((r) => setTimeout(r, 50));
+                    continue;
+                }
                 if (cameraRef.current) {
                     try {
                         const snapshot = await cameraRef.current.takeSnapshot({
@@ -158,8 +170,239 @@ const CameraScreen = ({ navigation }) => {
         setCameraPosition((p) => (p === 'front' ? 'back' : 'front'));
     }, []);
 
+    // ══════════════════════════════════════════════════════════════════════
+    // TimeWarp Scan — progressive composite, one thin strip per frame.
+    //
+    // Strategy: NO blending. Maximize capture fps so each strip is thin
+    // enough (~5-16px) that transitions look natural.
+    //
+    // FrameGrabber bypasses VisionCamera's takeSnapshot() pipeline entirely:
+    //   TextureView.getBitmap / PixelCopy → downscale → JPEG → fixed file
+    //   Expected: ~15-25ms/frame vs takeSnapshot's ~120ms/frame
+    //
+    // Remaining optimizations:
+    //   - Skia draw: 1 clipRect + 1 drawImageRect (no blend passes)
+    //   - flush/snapshot: DEFERRED until UI or video actually needs it
+    //   - Native downscale to 2× composite width (smaller JPEG encode/decode)
+    //   - Video encoder: back-pressure, skip frame if busy
+    //   - UI setState: throttled to 150ms (scan line stays smooth via rAF)
+    // ══════════════════════════════════════════════════════════════════════
+    const runWaterfallScan = useCallback(async (forVideo) => {
+        if (!cameraRef.current || waterfallCaptureRef.current) return;
+
+        const SCAN_DURATION_MS      = CAMERA_CONFIG.waterfallScanDurationMs;
+        const UI_UPDATE_INTERVAL_MS = 50;
+        const SNAPSHOT_QUALITY      = 85;
+        const GRAB_MAX_W = 0; // no downscale — full camera resolution
+
+        waterfallCaptureRef.current = true;
+        setIsWaterfallCapturing(true);
+        setIsRecording(true);
+        setScanProgress(0);
+        setWaterfallComposite(null);
+
+        const startTime = Date.now();
+        let animFrameId = null;
+        const animTick = () => {
+            const p = Math.min((Date.now() - startTime) / SCAN_DURATION_MS, 1.0);
+            setScanProgress(p);
+            if (p < 1.0 && waterfallCaptureRef.current) {
+                animFrameId = requestAnimationFrame(animTick);
+            }
+        };
+        animFrameId = requestAnimationFrame(animTick);
+
+        try {
+            // Deferred: composite created from first grabbed frame dimensions
+            // getBitmap() returns TextureView pixel size with VisionCamera's transform applied
+            let OUTPUT_W = 0;
+            let OUTPUT_H = 0;
+            let compositeSurface = null;
+            let compositeCanvas  = null;
+            let outputRect       = null;
+            let srcRect          = null;
+            const stripPaint     = Skia.Paint();
+
+            let videoOutPath  = null;
+            let frameSurface  = null;
+            let framePaint    = null;
+            let scanLinePaint = null;
+
+            let lastStripY       = 0;
+            let lastUIUpdateTime = 0;
+            let encoderBusy      = false;
+            let frameCount       = 0;
+            let lastImg          = null;
+
+            // ── Main capture loop ─────────────────────────────────────────
+            while (waterfallCaptureRef.current) {
+                // Frame grab via base64 (~8-15ms: no file I/O roundtrip)
+                let img = null;
+                try {
+                    const b64 = await FrameGrabber.grabFrameBase64(SNAPSHOT_QUALITY, GRAB_MAX_W);
+                    const data = Skia.Data.fromBase64(b64);
+                    img = Skia.Image.MakeImageFromEncoded(data);
+                } catch (_) {
+                    continue;
+                }
+                if (!waterfallCaptureRef.current || !img) break;
+
+                // First frame: create composite at exact grabbed frame dimensions
+                // getBitmap() already applies VisionCamera's center-crop transform
+                if (!compositeSurface) {
+                    const imgW = img.width();
+                    const imgH = img.height();
+                    // Ensure portrait
+                    OUTPUT_W = Math.min(imgW, imgH);
+                    OUTPUT_H = Math.max(imgW, imgH);
+                    console.log(`Waterfall: frame ${imgW}x${imgH}, composite ${OUTPUT_W}x${OUTPUT_H}`);
+
+                    compositeSurface = Skia.Surface.Make(OUTPUT_W, OUTPUT_H);
+                    if (!compositeSurface) throw new Error('Failed to create composite surface');
+                    compositeCanvas = compositeSurface.getCanvas();
+                    // Full image → full composite, no crop
+                    srcRect    = Skia.XYWHRect(0, 0, imgW, imgH);
+                    outputRect = Skia.XYWHRect(0, 0, OUTPUT_W, OUTPUT_H);
+
+                    if (forVideo) {
+                        const tempDir = await FileWriter.getTempDir();
+                        videoOutPath = `${tempDir}/waterfall_video_${Date.now()}.mp4`;
+                        await VideoEncoder.start(OUTPUT_W, OUTPUT_H, 30, videoOutPath);
+                    }
+                }
+
+                const elapsed  = Date.now() - startTime;
+                const progress = Math.min(elapsed / SCAN_DURATION_MS, 1.0);
+                const targetY  = Math.round(progress * OUTPUT_H);
+
+                if (targetY <= lastStripY) continue;
+
+                // Draw strip — 1:1 pixel mapping, no rescaling
+                compositeCanvas.save();
+                compositeCanvas.clipRect(
+                    Skia.XYWHRect(0, lastStripY, OUTPUT_W, targetY - lastStripY),
+                    1, false,
+                );
+                compositeCanvas.drawImageRect(img, srcRect, outputRect, stripPaint);
+                compositeCanvas.restore();
+
+                lastStripY = targetY;
+                lastImg = img;
+                frameCount++;
+
+                // DEFERRED flush: only pay the cost when we actually need a snapshot
+                const now = Date.now();
+                const needsUI    = (now - lastUIUpdateTime >= UI_UPDATE_INTERVAL_MS);
+                const needsVideo = forVideo && !encoderBusy;
+
+                if (needsUI || needsVideo) {
+                    compositeSurface.flush();
+                    const compositeImg = compositeSurface.makeImageSnapshot();
+
+                    if (needsUI) {
+                        setWaterfallComposite(compositeImg);
+                        lastUIUpdateTime = now;
+                    }
+
+                    if (needsVideo) {
+                        if (!frameSurface) {
+                            frameSurface  = Skia.Surface.Make(OUTPUT_W, OUTPUT_H);
+                            framePaint    = Skia.Paint();
+                            scanLinePaint = Skia.Paint();
+                            scanLinePaint.setColor(Skia.Color('#00FFFF'));
+                            scanLinePaint.setStrokeWidth(3);
+                        }
+                        try {
+                            const fc = frameSurface.getCanvas();
+                            fc.drawImageRect(img, srcRect, outputRect, framePaint);
+                            fc.save();
+                            fc.clipRect(
+                                Skia.XYWHRect(0, 0, OUTPUT_W, lastStripY), 1, false,
+                            );
+                            fc.drawImageRect(
+                                compositeImg, outputRect, outputRect, framePaint,
+                            );
+                            fc.restore();
+                            fc.drawLine(
+                                0, lastStripY, OUTPUT_W, lastStripY, scanLinePaint,
+                            );
+                            frameSurface.flush();
+
+                            encoderBusy = true;
+                            VideoEncoder.addFrame(
+                                frameSurface.makeImageSnapshot().encodeToBase64(0, 70),
+                            )
+                                .catch(() => {})
+                                .finally(() => { encoderBusy = false; });
+                        } catch (_) {}
+                    }
+                }
+
+                if (progress >= 1.0 || lastStripY >= OUTPUT_H) break;
+            }
+
+            // ── Finalize ─────────────────────────────────────────────────────
+            const durationSec = ((Date.now() - startTime) / 1000).toFixed(1);
+            const fps = (frameCount / parseFloat(durationSec)).toFixed(1);
+            console.log(`Waterfall scan: ${frameCount} frames in ${durationSec}s (${fps} fps), strip ~${(OUTPUT_H / frameCount).toFixed(1)}px`);
+
+            if (compositeSurface) {
+                compositeSurface.flush();
+                const finalImg = compositeSurface.makeImageSnapshot();
+                setWaterfallComposite(finalImg);
+
+                if (forVideo && videoOutPath) {
+                    if (frameSurface && framePaint) {
+                        try {
+                            const fc = frameSurface.getCanvas();
+                            fc.drawImageRect(
+                                finalImg, outputRect, outputRect, framePaint,
+                            );
+                            frameSurface.flush();
+                            const finalBase64 = frameSurface
+                                .makeImageSnapshot()
+                                .encodeToBase64(0, 70);
+                            for (let i = 0; i < 30; i++) {
+                                await VideoEncoder.addFrame(finalBase64);
+                            }
+                        } catch (_) {}
+                    }
+                    const outPath = await VideoEncoder.stop();
+                    await saveVideo(outPath);
+                    Alert.alert('Saved', 'Video saved to gallery');
+                } else if (!forVideo) {
+                    const base64 = finalImg.encodeToBase64(0, 95);
+                    const tempDir = await FileWriter.getTempDir();
+                    const outPath = `${tempDir}/waterfall_photo_${Date.now()}.jpg`;
+                    await FileWriter.writeBase64ToFile(base64, outPath);
+                    await savePhoto(outPath);
+                    Alert.alert('Saved', 'Photo saved to gallery');
+                }
+            }
+        } catch (e) {
+            console.error('Waterfall scan error:', e);
+        } finally {
+            if (animFrameId) cancelAnimationFrame(animFrameId);
+            waterfallCaptureRef.current = false;
+            setIsWaterfallCapturing(false);
+            setIsRecording(false);
+            setScanProgress(0);
+            setWaterfallComposite(null);
+        }
+    }, [screenWidth, screenHeight]);
+
     const handleCapture = useCallback(async () => {
         if (!cameraRef.current) return;
+
+        // Waterfall: tap to start scan, tap again to stop early
+        if (selectedEffect === 'waterfall') {
+            if (isWaterfallCapturing) {
+                waterfallCaptureRef.current = false;
+                return;
+            }
+            runWaterfallScan(mode === 'video');
+            return;
+        }
 
         if (mode === 'photo') {
             try {
@@ -238,7 +481,7 @@ const CameraScreen = ({ navigation }) => {
                 }
             }
         }
-    }, [mode, isRecording, selectedEffect]);
+    }, [mode, isRecording, selectedEffect, runWaterfallScan]);
 
     const handleToggleEffects = useCallback(() => {
         setShowEffects((v) => !v);
@@ -288,10 +531,11 @@ const CameraScreen = ({ navigation }) => {
                 photo={true}
                 video={true}
                 audio={true}
+                androidPreviewViewType="texture-view"
             />
 
-            {/* Skia shader overlay — covers camera when effect is active */}
-            {runtimeEffect && frameImage && (
+            {/* Skia shader overlay — non-waterfall effects, and waterfall preview (not scanning) */}
+            {runtimeEffect && frameImage && !isWaterfallCapturing && (
                 <View style={StyleSheet.absoluteFill} pointerEvents="none">
                     <Canvas style={{ width: screenWidth, height: screenHeight }}>
                         <Fill>
@@ -312,6 +556,39 @@ const CameraScreen = ({ navigation }) => {
                                 />
                             </Shader>
                         </Fill>
+                    </Canvas>
+                </View>
+            )}
+
+            {/* Waterfall scan overlay — composite above scan line, native camera visible below */}
+            {isWaterfallCapturing && (
+                <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                    <Canvas style={{ width: screenWidth, height: screenHeight }}>
+                        {/* Composite frozen strips, clipped above scan line */}
+                        {waterfallComposite && (
+                            <Group
+                                clip={Skia.XYWHRect(
+                                    0, 0,
+                                    screenWidth,
+                                    scanProgress * screenHeight,
+                                )}
+                            >
+                                <SkiaImage
+                                    image={waterfallComposite}
+                                    x={0}
+                                    y={0}
+                                    width={screenWidth}
+                                    height={screenHeight}
+                                    fit="fill"
+                                />
+                            </Group>
+                        )}
+                        <SkiaLine
+                            p1={{ x: 0, y: scanProgress * screenHeight }}
+                            p2={{ x: screenWidth, y: scanProgress * screenHeight }}
+                            color="#00FFFF"
+                            strokeWidth={3}
+                        />
                     </Canvas>
                 </View>
             )}

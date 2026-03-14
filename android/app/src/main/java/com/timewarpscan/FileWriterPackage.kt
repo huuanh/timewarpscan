@@ -7,7 +7,7 @@ import com.facebook.react.uimanager.ViewManager
 
 class FileWriterPackage : ReactPackage {
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> =
-        listOf(FileWriterModule(reactContext), VideoEncoderModule(reactContext))
+        listOf(FileWriterModule(reactContext), VideoEncoderModule(reactContext), FrameGrabberModule(reactContext))
 
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
         emptyList()
