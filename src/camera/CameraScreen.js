@@ -7,6 +7,7 @@ import {
     StatusBar,
     Alert,
     useWindowDimensions,
+    NativeModules,
 } from 'react-native';
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import { Canvas, Fill, Shader, ImageShader, Skia } from '@shopify/react-native-skia';
@@ -16,6 +17,41 @@ import CameraControls from './CameraControls';
 import EffectSelector from '../components/EffectSelector';
 import EFFECTS from '../effects/effectsConfig';
 import { savePhoto, saveVideo } from '../utils/mediaSaver';
+
+const { FileWriter, VideoEncoder } = NativeModules;
+
+/**
+ * Apply a Skia shader effect to an SkImage on an offscreen surface.
+ * Returns a processed SkImage.
+ */
+function applyShaderToImage(srcImage, effectId, time) {
+    const effect = EFFECTS.find((e) => e.id === effectId);
+    if (!effect?.shader) return srcImage;
+
+    const rt = Skia.RuntimeEffect.Make(effect.shader);
+    if (!rt) return srcImage;
+
+    const w = srcImage.width();
+    const h = srcImage.height();
+
+    const surface = Skia.Surface.Make(w, h);
+    if (!surface) return srcImage;
+
+    const canvas = surface.getCanvas();
+    const paint = Skia.Paint();
+
+    const imageShader = srcImage.makeShaderOptions(0, 0, 0, 0);
+    const uniforms = [w, h];
+    if (effect.shader.includes('uniform float time')) {
+        uniforms.push(time);
+    }
+    const shader = rt.makeShaderWithChildren(uniforms, [imageShader]);
+    paint.setShader(shader);
+    canvas.drawRect(Skia.XYWHRect(0, 0, w, h), paint);
+    surface.flush();
+
+    return surface.makeImageSnapshot();
+}
 
 const CameraScreen = ({ navigation }) => {
     const cameraRef = useRef(null);
@@ -31,6 +67,7 @@ const CameraScreen = ({ navigation }) => {
 
     const device = useCameraDevice(cameraPosition);
     const timeRef = useRef(0);
+    const isEffectRecordingRef = useRef(false);
 
     // Compile current effect shader (null for 'normal')
     const runtimeEffect = useMemo(() => {
@@ -74,6 +111,21 @@ const CameraScreen = ({ navigation }) => {
                         if (img && active) {
                             timeRef.current += 0.05;
                             setFrameImage(img);
+
+                            // Feed processed frame to video encoder during recording
+                            if (isEffectRecordingRef.current) {
+                                try {
+                                    const processed = applyShaderToImage(
+                                        img,
+                                        selectedEffect,
+                                        timeRef.current,
+                                    );
+                                    const base64 = processed.encodeToBase64(0, 70);
+                                    await VideoEncoder.addFrame(base64);
+                                } catch (_e) {
+                                    // Skip frame on encoding error
+                                }
+                            }
                         }
                     } catch (_) {
                         // Skip frame on error (camera busy, etc.)
@@ -87,7 +139,7 @@ const CameraScreen = ({ navigation }) => {
         return () => {
             active = false;
         };
-    }, [runtimeEffect]);
+    }, [runtimeEffect, selectedEffect]);
 
     // Request permissions on mount
     useEffect(() => {
@@ -111,10 +163,23 @@ const CameraScreen = ({ navigation }) => {
 
         if (mode === 'photo') {
             try {
-                const photo = await cameraRef.current.takePhoto({
-                    flash: 'off',
-                });
-                await savePhoto(photo.path);
+                if (selectedEffect === 'normal') {
+                    const photo = await cameraRef.current.takePhoto({ flash: 'off' });
+                    await savePhoto(photo.path);
+                } else {
+                    const snapshot = await cameraRef.current.takeSnapshot({ quality: 95 });
+                    const data = await Skia.Data.fromURI(`file://${snapshot.path}`);
+                    const srcImage = Skia.Image.MakeImageFromEncoded(data);
+                    if (!srcImage) throw new Error('Failed to decode snapshot');
+
+                    const processed = applyShaderToImage(srcImage, selectedEffect, timeRef.current);
+                    const base64 = processed.encodeToBase64(0, 95);
+
+                    const tempDir = await FileWriter.getTempDir();
+                    const outPath = `${tempDir}/effect_photo_${Date.now()}.jpg`;
+                    await FileWriter.writeBase64ToFile(base64, outPath);
+                    await savePhoto(outPath);
+                }
                 Alert.alert('Saved', 'Photo saved to gallery');
             } catch (e) {
                 console.error('Photo capture error:', e);
@@ -122,28 +187,58 @@ const CameraScreen = ({ navigation }) => {
         } else {
             // Video mode
             if (isRecording) {
-                await cameraRef.current.stopRecording();
+                // Stop recording
+                if (selectedEffect !== 'normal' && isEffectRecordingRef.current) {
+                    // Stop effect video encoder
+                    isEffectRecordingRef.current = false;
+                    setIsRecording(false);
+                    try {
+                        const outputPath = await VideoEncoder.stop();
+                        await saveVideo(outputPath);
+                        Alert.alert('Saved', 'Video saved to gallery');
+                    } catch (e) {
+                        console.error('Effect video save error:', e);
+                    }
+                } else {
+                    // Stop normal camera recording
+                    await cameraRef.current.stopRecording();
+                }
             } else {
+                // Start recording
                 setIsRecording(true);
-                cameraRef.current.startRecording({
-                    flash: 'off',
-                    onRecordingFinished: async (video) => {
+                if (selectedEffect !== 'normal') {
+                    // Start effect video encoder — frames fed by snapshot loop
+                    try {
+                        const tempDir = await FileWriter.getTempDir();
+                        const outPath = `${tempDir}/effect_video_${Date.now()}.mp4`;
+                        await VideoEncoder.start(720, 1280, 15, outPath);
+                        isEffectRecordingRef.current = true;
+                    } catch (e) {
                         setIsRecording(false);
-                        try {
-                            await saveVideo(video.path);
-                            Alert.alert('Saved', 'Video saved to gallery');
-                        } catch (e) {
-                            console.error('Video save error:', e);
-                        }
-                    },
-                    onRecordingError: (error) => {
-                        setIsRecording(false);
-                        console.error('Recording error:', error);
-                    },
-                });
+                        console.error('Effect recording start error:', e);
+                    }
+                } else {
+                    // Normal camera recording
+                    cameraRef.current.startRecording({
+                        flash: 'off',
+                        onRecordingFinished: async (video) => {
+                            setIsRecording(false);
+                            try {
+                                await saveVideo(video.path);
+                                Alert.alert('Saved', 'Video saved to gallery');
+                            } catch (e) {
+                                console.error('Video save error:', e);
+                            }
+                        },
+                        onRecordingError: (error) => {
+                            setIsRecording(false);
+                            console.error('Recording error:', error);
+                        },
+                    });
+                }
             }
         }
-    }, [mode, isRecording]);
+    }, [mode, isRecording, selectedEffect]);
 
     const handleToggleEffects = useCallback(() => {
         setShowEffects((v) => !v);
