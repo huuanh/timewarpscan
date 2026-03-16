@@ -10,6 +10,7 @@ import {
     FlatList,
     Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import useTranslation from '../hooks/useTranslation';
 import IAPModal from './IAPModal';
 import messaging from '@react-native-firebase/messaging';
@@ -135,7 +136,7 @@ const HomeScreen = ({ navigation }) => {
     );
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity style={styles.headerIconBtn}>
@@ -186,7 +187,7 @@ const HomeScreen = ({ navigation }) => {
             </View>
 
             <IAPModal visible={showIAPModal} onClose={() => setShowIAPModal(false)} />
-        </View>
+        </SafeAreaView>
     );
 };
 

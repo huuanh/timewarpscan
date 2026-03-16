@@ -44,8 +44,8 @@ const CameraControls = ({
 
 const styles = StyleSheet.create({
     container: {
-        paddingBottom: 24,
-        paddingTop: 12,
+        paddingBottom: 8,
+        paddingTop: 8,
         alignItems: 'center',
     },
     row: {

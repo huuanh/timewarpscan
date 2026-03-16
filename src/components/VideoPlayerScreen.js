@@ -12,6 +12,7 @@ import {
 import Video from 'react-native-video';
 import YoutubeIframe from 'react-native-youtube-iframe';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 const PLAYER_HEIGHT = width * (9 / 16);
@@ -123,7 +124,7 @@ const VideoPlayerScreen = ({ navigation, route }) => {
     };
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#000" />
 
             {/* Header */}
@@ -143,7 +144,7 @@ const VideoPlayerScreen = ({ navigation, route }) => {
 
             {/* Bottom spacer / future info area */}
             <View style={styles.infoArea} />
-        </View>
+        </SafeAreaView>
     );
 };
 

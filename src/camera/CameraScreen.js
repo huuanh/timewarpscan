@@ -160,7 +160,11 @@ const CameraScreen = ({ navigation }) => {
         }
     }, [hasAllPermissions, requestPermissions]);
 
-
+    // Hide Android navigation bar (immersive mode)
+    useEffect(() => {
+        StatusBar.setHidden(true);
+        return () => StatusBar.setHidden(false);
+    }, []);
 
     const handleBack = useCallback(() => {
         if (navigation?.canGoBack()) navigation.goBack();
@@ -174,26 +178,25 @@ const CameraScreen = ({ navigation }) => {
     // TimeWarp Scan — progressive composite, one thin strip per frame.
     //
     // Strategy: NO blending. Maximize capture fps so each strip is thin
-    // enough (~5-16px) that transitions look natural.
+    // enough (~1-3px) that transitions look natural.
     //
-    // FrameGrabber bypasses VisionCamera's takeSnapshot() pipeline entirely:
-    //   TextureView.getBitmap / PixelCopy → downscale → JPEG → fixed file
-    //   Expected: ~15-25ms/frame vs takeSnapshot's ~120ms/frame
-    //
-    // Remaining optimizations:
-    //   - Skia draw: 1 clipRect + 1 drawImageRect (no blend passes)
-    //   - flush/snapshot: DEFERRED until UI or video actually needs it
-    //   - Native downscale to 2× composite width (smaller JPEG encode/decode)
-    //   - Video encoder: back-pressure, skip frame if busy
-    //   - UI setState: throttled to 150ms (scan line stays smooth via rAF)
+    // Performance pipeline:
+    //   - Native: getBitmap + inline JPEG (no worker hop) → ~5-7ms
+    //   - JS pipelining: grab N+1 overlaps with processing N
+    //   - Downscale to 720px: 4× fewer pixels → faster encode/decode
+    //   - JPEG quality 70: good enough for thin strips
+    //   - Deferred flush: only when UI or video needs snapshot
+    //   - Video encoder: back-pressure, skip if busy
+    //   - Scan line: rAF-driven at 60fps, decoupled from capture rate
+    //   - Expected: 50-80fps → strips ~1-2px → no visible seams
     // ══════════════════════════════════════════════════════════════════════
     const runWaterfallScan = useCallback(async (forVideo) => {
         if (!cameraRef.current || waterfallCaptureRef.current) return;
 
         const SCAN_DURATION_MS      = CAMERA_CONFIG.waterfallScanDurationMs;
-        const UI_UPDATE_INTERVAL_MS = 50;
-        const SNAPSHOT_QUALITY      = 85;
-        const GRAB_MAX_W = 0; // no downscale — full camera resolution
+        const UI_UPDATE_INTERVAL_MS = 33;
+        const SNAPSHOT_QUALITY      = 70;
+        const GRAB_MAX_W = 720; // downscale to 720px width for speed
 
         waterfallCaptureRef.current = true;
         setIsWaterfallCapturing(true);
@@ -234,33 +237,36 @@ const CameraScreen = ({ navigation }) => {
             let frameCount       = 0;
             let lastImg          = null;
 
-            // ── Main capture loop ─────────────────────────────────────────
+            // ── Main capture loop (pipelined: grab N+1 while processing N) ─
+            let pendingGrab = FrameGrabber.grabFrameBase64(SNAPSHOT_QUALITY, GRAB_MAX_W);
             while (waterfallCaptureRef.current) {
-                // Frame grab via base64 (~8-15ms: no file I/O roundtrip)
                 let img = null;
+                let b64 = null;
+                try { b64 = await pendingGrab; } catch (_) { /* grab failed */ }
+                // Start next grab immediately — runs on native thread in parallel
+                pendingGrab = FrameGrabber.grabFrameBase64(SNAPSHOT_QUALITY, GRAB_MAX_W);
+                if (!waterfallCaptureRef.current) break;
+                if (!b64) continue;
                 try {
-                    const b64 = await FrameGrabber.grabFrameBase64(SNAPSHOT_QUALITY, GRAB_MAX_W);
                     const data = Skia.Data.fromBase64(b64);
                     img = Skia.Image.MakeImageFromEncoded(data);
-                } catch (_) {
-                    continue;
-                }
-                if (!waterfallCaptureRef.current || !img) break;
+                } catch (_) { continue; }
+                if (!img) continue;
 
-                // First frame: create composite at exact grabbed frame dimensions
-                // getBitmap() already applies VisionCamera's center-crop transform
+                // First frame: create composite at grabbed frame dimensions
+                // getBitmap() includes VisionCamera's center-crop transform
                 if (!compositeSurface) {
                     const imgW = img.width();
                     const imgH = img.height();
-                    // Ensure portrait
+                    // Use grabbed frame dimensions directly (already transformed by VisionCamera)
                     OUTPUT_W = Math.min(imgW, imgH);
                     OUTPUT_H = Math.max(imgW, imgH);
-                    console.log(`Waterfall: frame ${imgW}x${imgH}, composite ${OUTPUT_W}x${OUTPUT_H}`);
+                    console.log(`Waterfall: frame ${imgW}x${imgH}, composite ${OUTPUT_W}x${OUTPUT_H}, screen ${screenWidth}x${screenHeight}`);
 
                     compositeSurface = Skia.Surface.Make(OUTPUT_W, OUTPUT_H);
                     if (!compositeSurface) throw new Error('Failed to create composite surface');
                     compositeCanvas = compositeSurface.getCanvas();
-                    // Full image → full composite, no crop
+
                     srcRect    = Skia.XYWHRect(0, 0, imgW, imgH);
                     outputRect = Skia.XYWHRect(0, 0, OUTPUT_W, OUTPUT_H);
 
@@ -520,7 +526,7 @@ const CameraScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#000" translucent />
+            <StatusBar hidden={true} />
 
             {/* Native camera preview (always visible) */}
             <Camera
@@ -579,7 +585,7 @@ const CameraScreen = ({ navigation }) => {
                                     y={0}
                                     width={screenWidth}
                                     height={screenHeight}
-                                    fit="fill"
+                                    fit="cover"
                                 />
                             </Group>
                         )}
@@ -633,7 +639,7 @@ const styles = StyleSheet.create({
     },
     topBar: {
         position: 'absolute',
-        top: 16,
+        top: 8,
         left: 12,
         right: 12,
         flexDirection: 'row',

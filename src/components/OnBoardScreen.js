@@ -8,6 +8,7 @@ import {
   FlatList,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../constants';
 import AdManager, { ADS_UNIT } from '../AdManager.js';
 import { NativeAdComponent } from './NativeAdComponent';
@@ -101,7 +102,7 @@ const OnBoardScreen = ({ onNext }) => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Slides */}
       <View style={styles.slidesWrapper}>
         <FlatList
@@ -144,7 +145,7 @@ const OnBoardScreen = ({ onNext }) => {
         visible={showLanguageModal}
         onClose={() => setShowLanguageModal(false)}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

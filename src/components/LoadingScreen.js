@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Image, Text, StyleSheet, Animated } from 'react-native';
 import { COLORS } from '../constants';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AdManager, { ADS_UNIT } from '../AdManager.js';
 import RemoteConfigManager from '../RemoteConfigManager';
 import IAPManager from '../utils/IAPManager';
@@ -171,7 +172,7 @@ const LoadingScreen = ({ onComplete }) => {
   }, []);
 
   return (
-    <View style={styles.loadingContainer}>
+    <SafeAreaView style={styles.loadingContainer}>
       <Text style={styles.title}>{t('appTitle', 'Time Warp Scan')}</Text>
       <View style={styles.progressBarContainer}>
         <Animated.View 
@@ -190,7 +191,7 @@ const LoadingScreen = ({ onComplete }) => {
       </View>
       <Text style={styles.loadingText}>{loadingText}</Text>
       <Text style={styles.adsText}>{t('adsDisclaimer', 'This action may contain ads')}</Text>
-    </View>
+    </SafeAreaView>
   );
 };
 
