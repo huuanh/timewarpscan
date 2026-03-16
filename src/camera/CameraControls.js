@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import ModeSelector from './ModeSelector';
+import EFFECTS from '../effects/effectsConfig';
 
 const CameraControls = ({
     mode,
@@ -10,37 +10,56 @@ const CameraControls = ({
     onCapture,
     onSwitchCamera,
     onToggleEffects,
-}) => (
-    <View style={styles.container}>
-        <ModeSelector mode={mode} onModeChange={onModeChange} />
+    selectedEffect,
+    isScanning,
+}) => {
+    const effect = EFFECTS.find((e) => e.id === selectedEffect) || EFFECTS[0];
 
-        <View style={styles.row}>
-            {/* Effects button */}
-            <TouchableOpacity style={styles.sideBtn} onPress={onToggleEffects}>
-                <Icon name="auto-awesome" size={28} color="#fff" />
-            </TouchableOpacity>
+    return (
+        <View style={styles.container}>
+            <ModeSelector mode={mode} onModeChange={onModeChange} />
 
-            {/* Capture button */}
-            <TouchableOpacity
-                style={styles.captureOuter}
-                onPress={onCapture}
-                activeOpacity={0.7}
-            >
-                <View
-                    style={[
-                        styles.captureInner,
-                        mode === 'video' && isRecording && styles.captureRecording,
-                    ]}
-                />
-            </TouchableOpacity>
+            <View style={styles.row}>
+                {/* Effects button — shows selected effect icon */}
+                <TouchableOpacity style={styles.sideBtn} onPress={onToggleEffects}>
+                    <Image source={effect.image} style={styles.effectIcon} />
+                </TouchableOpacity>
 
-            {/* Switch camera */}
-            <TouchableOpacity style={styles.sideBtn} onPress={onSwitchCamera}>
-                <Icon name="flip-camera-android" size={28} color="#fff" />
-            </TouchableOpacity>
+                {/* Capture button */}
+                <TouchableOpacity
+                    style={styles.captureOuter}
+                    onPress={onCapture}
+                    activeOpacity={0.7}
+                >
+                    {isScanning ? (
+                        <Image
+                            source={require('../../assets/home/pause.png')}
+                            style={styles.pauseIcon}
+                        />
+                    ) : mode === 'video' ? (
+                        <Image
+                            source={require('../../assets/home/video.png')}
+                            style={styles.pauseIcon}
+                        />
+                    ) : (
+                        <Image
+                            source={require('../../assets/home/camera.png')}
+                            style={styles.pauseIcon}
+                        />
+                    )}
+                </TouchableOpacity>
+
+                {/* Switch camera */}
+                <TouchableOpacity style={styles.sideBtn} onPress={onSwitchCamera}>
+                    <Image
+                        source={require('../../assets/home/rotate.png')}
+                        style={styles.rotateIcon}
+                    />
+                </TouchableOpacity>
+            </View>
         </View>
-    </View>
-);
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -60,7 +79,7 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        // backgroundColor: 'rgba(255,255,255,0.15)',
         justifyContent: 'center',
         alignItems: 'center',
         flex: 1,
@@ -70,8 +89,6 @@ const styles = StyleSheet.create({
         width: 72,
         height: 72,
         borderRadius: 36,
-        borderWidth: 4,
-        borderColor: '#fff',
         justifyContent: 'center',
         alignItems: 'center',
         marginHorizontal: 32,
@@ -87,6 +104,21 @@ const styles = StyleSheet.create({
         height: 32,
         borderRadius: 6,
         backgroundColor: '#E53935',
+    },
+    effectIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 18,
+    },
+    pauseIcon: {
+        width: 68,
+        height: 68,
+        // tintColor: '#D4A94B',
+    },
+    rotateIcon: {
+        width: 48,
+        height: 48,
+        // tintColor: '#fff',
     },
 });
 

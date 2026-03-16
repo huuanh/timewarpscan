@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     StatusBar,
     Alert,
+    Image,
     useWindowDimensions,
     NativeModules,
 } from 'react-native';
@@ -18,6 +19,11 @@ import EffectSelector from '../components/EffectSelector';
 import EFFECTS from '../effects/effectsConfig';
 import { savePhoto, saveVideo } from '../utils/mediaSaver';
 import CAMERA_CONFIG from './cameraConfig';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const SCAN_LINE_COLORS = ['#00FFFF', '#FF0000', '#00FF00', '#FFFF00', '#FF00FF', '#FFFFFF'];
+const SPEED_OPTIONS = [1, 1.5, 2, 3];
+const TIMER_OPTIONS = [0, 3, 5, 10];
 
 const { FileWriter, VideoEncoder, FrameGrabber } = NativeModules;
 
@@ -58,6 +64,7 @@ const CameraScreen = ({ navigation }) => {
     const cameraRef = useRef(null);
     const { hasAllPermissions, requestPermissions } = useCameraPermission();
     const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
 
     const [cameraPosition, setCameraPosition] = useState('front');
     const [mode, setMode] = useState('photo');
@@ -65,6 +72,13 @@ const CameraScreen = ({ navigation }) => {
     const [selectedEffect, setSelectedEffect] = useState('normal');
     const [showEffects, setShowEffects] = useState(false);
     const [frameImage, setFrameImage] = useState(null);
+
+    // Toolbar state
+    const [scanDirection, setScanDirection] = useState('down'); // 'down' | 'up' for waterfall, 'right' | 'left' for single
+    const [scanLineColor, setScanLineColor] = useState('#00FFFF');
+    const [timerSeconds, setTimerSeconds] = useState(0); // 0 = no timer
+    const [speedMultiplier, setSpeedMultiplier] = useState(1);
+    const [timerCountdown, setTimerCountdown] = useState(0);
 
     const device = useCameraDevice(cameraPosition);
     const timeRef = useRef(0);
@@ -495,6 +509,7 @@ const CameraScreen = ({ navigation }) => {
 
     const handleSelectEffect = useCallback((effectId) => {
         setSelectedEffect(effectId);
+        setShowEffects(false);
     }, []);
 
     // Permission not granted yet
@@ -599,12 +614,95 @@ const CameraScreen = ({ navigation }) => {
                 </View>
             )}
 
+            {/* Back button */}
+            <TouchableOpacity style={[styles.topBtn, { position: 'absolute', top: insets.top + 8, left: 12, zIndex: 11 }]} onPress={handleBack}>
+                <Icon name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+
             {/* Top bar */}
-            <View style={styles.topBar}>
-                <TouchableOpacity style={styles.topBtn} onPress={handleBack}>
-                    <Icon name="arrow-back" size={24} color="#fff" />
-                </TouchableOpacity>
+            <View style={[styles.topBar, { top: insets.top + 8 }]}>
+                <View style={styles.toolbar}>
+                    {/* Scan direction */}
+                    <TouchableOpacity
+                        style={styles.toolBtn}
+                        onPress={() => {
+                            if (selectedEffect === 'waterfall') {
+                                setScanDirection(d => d === 'down' ? 'up' : 'down');
+                            } else {
+                                setScanDirection(d => d === 'right' ? 'left' : 'right');
+                            }
+                        }}
+                    >
+                        <Image
+                            source={
+                                (selectedEffect === 'waterfall' || selectedEffect === 'normal')
+                                    ? require('../../assets/home/top-bot.png')
+                                    : require('../../assets/home/left-right.png')
+                            }
+                            style={[
+                                styles.toolIcon,
+                                (scanDirection === 'up' || scanDirection === 'left') && styles.toolIconFlipped,
+                            ]}
+                        />
+                    </TouchableOpacity>
+                    {/* Scan line color */}
+                    <TouchableOpacity
+                        style={styles.toolBtn}
+                        onPress={() => {
+                            const idx = SCAN_LINE_COLORS.indexOf(scanLineColor);
+                            setScanLineColor(SCAN_LINE_COLORS[(idx + 1) % SCAN_LINE_COLORS.length]);
+                        }}
+                    >
+                        <Image
+                            source={require('../../assets/home/scan_color.png')}
+                            style={[styles.toolIcon, { tintColor: scanLineColor }]}
+                        />
+                    </TouchableOpacity>
+                    {/* Timer */}
+                    <TouchableOpacity
+                        style={styles.toolBtn}
+                        onPress={() => {
+                            const idx = TIMER_OPTIONS.indexOf(timerSeconds);
+                            setTimerSeconds(TIMER_OPTIONS[(idx + 1) % TIMER_OPTIONS.length]);
+                        }}
+                    >
+                        <Image
+                            source={require('../../assets/home/countdown.png')}
+                            style={styles.toolIcon}
+                        />
+                        {timerSeconds > 0 && (
+                            <View style={styles.toolBadge}>
+                                <Text style={styles.toolBadgeText}>{timerSeconds}s</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                    {/* Speed */}
+                    <TouchableOpacity
+                        style={styles.toolBtn}
+                        onPress={() => {
+                            const idx = SPEED_OPTIONS.indexOf(speedMultiplier);
+                            setSpeedMultiplier(SPEED_OPTIONS[(idx + 1) % SPEED_OPTIONS.length]);
+                        }}
+                    >
+                        <Image
+                            source={require('../../assets/home/speeed.png')}
+                            style={styles.toolIcon}
+                        />
+                        {speedMultiplier !== 1 && (
+                            <View style={styles.toolBadge}>
+                                <Text style={styles.toolBadgeText}>{speedMultiplier}x</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                </View>
             </View>
+
+            {/* Timer countdown overlay */}
+            {timerCountdown > 0 && (
+                <View style={styles.timerOverlay} pointerEvents="none">
+                    <Text style={styles.timerText}>{timerCountdown}</Text>
+                </View>
+            )}
 
             {/* Effect selector panel */}
             {showEffects && (
@@ -626,6 +724,8 @@ const CameraScreen = ({ navigation }) => {
                     onCapture={handleCapture}
                     onSwitchCamera={handleSwitchCamera}
                     onToggleEffects={handleToggleEffects}
+                    selectedEffect={selectedEffect}
+                    isScanning={isWaterfallCapturing}
                 />
             </View>
         </View>
@@ -639,11 +739,11 @@ const styles = StyleSheet.create({
     },
     topBar: {
         position: 'absolute',
-        top: 8,
-        left: 12,
-        right: 12,
+        left: 0,
+        right: 0,
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        alignItems: 'center',
+        justifyContent: 'center',
         zIndex: 10,
     },
     topBtn: {
@@ -653,6 +753,54 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.4)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    toolbar: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        borderRadius: 20,
+        paddingHorizontal: 4,
+    },
+    toolBtn: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    toolIcon: {
+        width: 22,
+        height: 22,
+        tintColor: '#fff',
+    },
+    toolIconFlipped: {
+        transform: [{ rotate: '180deg' }],
+    },
+    toolBadge: {
+        position: 'absolute',
+        top: 2,
+        right: 0,
+        backgroundColor: '#D4A94B',
+        borderRadius: 6,
+        paddingHorizontal: 3,
+        paddingVertical: 1,
+    },
+    toolBadgeText: {
+        color: '#000',
+        fontSize: 8,
+        fontWeight: '700',
+    },
+    timerOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 30,
+    },
+    timerText: {
+        fontSize: 80,
+        fontWeight: '700',
+        color: '#fff',
+        textShadowColor: 'rgba(0,0,0,0.6)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 8,
     },
     bottomArea: {
         position: 'absolute',

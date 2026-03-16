@@ -14,8 +14,8 @@ const EffectSelector = ({ selectedEffect, onSelectEffect, onClose }) => (
         </View>
         <FlatList
             data={EFFECTS}
-            horizontal
-            showsHorizontalScrollIndicator={false}
+            numColumns={4}
+            showsVerticalScrollIndicator={false}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
                 <EffectButton
@@ -25,6 +25,7 @@ const EffectSelector = ({ selectedEffect, onSelectEffect, onClose }) => (
                 />
             )}
             contentContainerStyle={styles.list}
+            columnWrapperStyle={styles.row}
         />
     </View>
 );
@@ -51,6 +52,10 @@ const styles = StyleSheet.create({
     },
     list: {
         paddingHorizontal: 8,
+    },
+    row: {
+        justifyContent: 'flex-start',
+        marginBottom: 8,
     },
 });
 

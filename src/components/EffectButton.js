@@ -1,6 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { TouchableOpacity, Text, StyleSheet, View, Image } from 'react-native';
 
 const EffectButton = ({ effect, selected, onPress }) => (
     <TouchableOpacity
@@ -9,11 +8,7 @@ const EffectButton = ({ effect, selected, onPress }) => (
         activeOpacity={0.7}
     >
         <View style={[styles.iconWrap, selected && styles.iconWrapSelected]}>
-            <Icon
-                name={effect.icon}
-                size={28}
-                color={selected ? '#D4A94B' : '#fff'}
-            />
+            <Image source={effect.image} style={styles.effectImage} />
         </View>
         <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={1}>
             {effect.name}
@@ -37,10 +32,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 2,
         borderColor: 'transparent',
+        overflow: 'hidden',
     },
     iconWrapSelected: {
         borderColor: '#D4A94B',
         backgroundColor: 'rgba(212,169,75,0.15)',
+    },
+    effectImage: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
     },
     label: {
         color: '#ccc',
