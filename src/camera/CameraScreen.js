@@ -209,8 +209,8 @@ const CameraScreen = ({ navigation }) => {
 
         const SCAN_DURATION_MS      = CAMERA_CONFIG.waterfallScanDurationMs;
         const UI_UPDATE_INTERVAL_MS = 33;
-        const SNAPSHOT_QUALITY      = 70;
-        const GRAB_MAX_W = 720; // downscale to 720px width for speed
+        const SNAPSHOT_QUALITY      = 95;
+        const GRAB_MAX_W = 0; // 0 = no downscale, use native preview resolution
 
         waterfallCaptureRef.current = true;
         setIsWaterfallCapturing(true);
